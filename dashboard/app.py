@@ -860,7 +860,10 @@ elif pagina.startswith("6"):
         if dr.empty:
             st.info("Sem dados ainda.")
         else:
-            st.caption("Ativos/CNPJs que aparecem em mais de um fundo monitorado.")
+            st.caption("Ativos/CNPJs que aparecem em mais de um fundo monitorado. "
+                       "'Nº gestoras' mostra quantos concorrentes DIFERENTES têm "
+                       "esse ativo — o sinal mais forte é aparecer em várias "
+                       "gestoras, não só em vários fundos da mesma gestora.")
             tbl = dr.copy()
             tbl["cnpj_investido"] = tbl["cnpj_investido"].map(fmt_cnpj)
             if "fundos" in tbl.columns:
@@ -869,7 +872,12 @@ elif pagina.startswith("6"):
                 tbl["valor_total"] = tbl["valor_total"].map(fmt_moeda)
             tbl = tbl.rename(columns={
                 "cnpj_investido": "CNPJ investido", "nome_ativo": "Ativo",
+                "qtd_gestoras": "Nº gestoras", "gestoras": "Gestoras",
                 "qtd_fundos": "Nº fundos", "valor_total": "Valor total"})
+            # reordena para destacar Nº gestoras logo após o nome do ativo
+            ordem = ["CNPJ investido", "Ativo", "Nº gestoras", "Gestoras",
+                    "Nº fundos", "Valor total"]
+            tbl = tbl[[c for c in ordem if c in tbl.columns]]
             st.dataframe(tbl, use_container_width=True, hide_index=True)
             st.download_button("Exportar CSV", svc.exportar_csv(dr),
                                file_name="cnpjs_recorrentes.csv", mime="text/csv")
