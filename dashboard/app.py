@@ -738,11 +738,16 @@ elif pagina.startswith("5"):
     df = al["fundos_sem_cda"]
     if not df.empty:
         df = df.copy(); df["cnpj"] = df["cnpj"].map(fmt_cnpj)
-    st.dataframe(df, use_container_width=True) if not df.empty else st.success("Nenhum.")
+    if not df.empty:
+        st.dataframe(df, use_container_width=True)
+    else:
+        st.success("Nenhum.")
 
     st.subheader("Importações com erro / parcial / duplicadas")
-    st.dataframe(al["importacoes_erro"], use_container_width=True) \
-        if not al["importacoes_erro"].empty else st.success("Nenhuma.")
+    if not al["importacoes_erro"].empty:
+        st.dataframe(al["importacoes_erro"], use_container_width=True)
+    else:
+        st.success("Nenhuma.")
 
     st.subheader(f"Concentração ≥ {limite:.0f}% em um único CNPJ")
     conc = al["concentracao"]
