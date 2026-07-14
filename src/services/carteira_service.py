@@ -807,3 +807,143 @@ def detectar_dados_do_arquivo(nome_arquivo: str, conteudo: bytes) -> dict:
                 tmp.unlink(missing_ok=True)
             except Exception:
                 pass
+
+
+# ---------------------------------------------------------------------------
+# Cruzamento Emissões × Carteiras: concorrente que entrou em emissão recente
+# ---------------------------------------------------------------------------
+def _normalizar_nome_fundo(nome: str) -> str:
+    """Normaliza nome de fundo para casar entre a base de Emissões (CVM) e a de
+    CDA: sem acento, minúsculo, sem pontuação e sem sufixos jurídicos comuns
+    que variam de grafia ('responsabilidade limitada', 'resp lim', etc.)."""
+    import re
+    import unicodedata
+    if not isinstance(nome, str):
+        nome = "" if nome is None else str(nome)
+    txt = unicodedata.normalize("NFKD", nome)
+    txt = "".join(c for c in txt if not unicodedata.combining(c)).lower()
+    # remove sufixos jurídicos e abreviações que variam entre as bases
+    for suf in ["responsabilidade limitada", "resp limitada", "resp lim",
+                "responsabilidade ltda", "resp ltda"]:
+        txt = txt.replace(suf, " ")
+    # unifica variações de "fundo de investimento em direitos creditorios"
+    txt = re.sub(r"[^\w\s]", " ", txt)      # tira pontuação
+    txt = re.sub(r"\s+", " ", txt).strip()  # colapsa espaços
+    return txt
+
+
+def concorrentes_em_emissoes(df_emissoes: pd.DataFrame,
+                             crescimento_min_pct: float = 5.0,
+                             gestora_nome: Optional[str] = None) -> pd.DataFrame:
+    """Cruza os fundos que EMITIRAM recentemente (df_emissoes, vindo da aba
+    Emissões) com as CARTEIRAS dos concorrentes monitorados, e retorna os casos
+    em que um concorrente ENTROU ou AUMENTOU posição de forma relevante num
+    fundo que emitiu.
+
+    Regra de 'entrada' (para separar aporte real de mera rentabilidade da cota):
+      - posição NOVA (não existia no mês anterior do mesmo fundo monitorado); ou
+      - valor cresceu mais que ``crescimento_min_pct`` % de um mês para o outro.
+
+    Colunas de saída: gestora, fundo_monitorado, fundo_cnpj, ativo (fundo que
+    emitiu), cnpj_investido, competencia, valor_anterior, valor_atual,
+    variacao_pct, tipo (Nova posição | Aumento), emissor_cvm, data_emissao.
+    """
+    if df_emissoes is None or df_emissoes.empty:
+        return pd.DataFrame()
+
+    # nomes dos fundos que emitiram (normalizados) -> data mais recente de referência
+    emis = df_emissoes.copy()
+    col_emissor = "emissor" if "emissor" in emis.columns else None
+    if not col_emissor:
+        return pd.DataFrame()
+    emis["_nome_norm"] = emis[col_emissor].map(_normalizar_nome_fundo)
+    data_col = "data_referencia" if "data_referencia" in emis.columns else None
+    mapa_emissao = {}
+    for _, r in emis.iterrows():
+        chave = r["_nome_norm"]
+        if not chave:
+            continue
+        d = r[data_col] if data_col else None
+        # guarda a data de emissão mais recente e o nome original
+        if chave not in mapa_emissao or (d is not None and pd.notna(d) and
+                                         (mapa_emissao[chave]["data"] is None or
+                                          d > mapa_emissao[chave]["data"])):
+            mapa_emissao[chave] = {"data": d, "emissor": r[col_emissor]}
+
+    if not mapa_emissao:
+        return pd.DataFrame()
+
+    # carrega todas as posições de carteira dos fundos monitorados, com nome do
+    # ativo investido e a competência
+    sql = """
+        SELECT g.nome AS gestora, fm.nome AS fundo_monitorado,
+               c.fundo_cnpj, c.cnpj_investido, c.competencia,
+               COALESCE(c.nome_ativo, a.nome) AS ativo,
+               c.valor_financeiro
+        FROM carteiras_cda c
+        JOIN fundos fm ON fm.cnpj = c.fundo_cnpj
+        LEFT JOIN gestoras g ON g.id = fm.gestora_id
+        LEFT JOIN ativos_investidos a ON a.cnpj = c.cnpj_investido
+        WHERE c.cnpj_investido IS NOT NULL
+    """
+    params: list = []
+    if gestora_nome:
+        sql += " AND g.nome = ?"
+        params.append(gestora_nome)
+    with conectar() as con:
+        cart = pd.read_sql_query(sql, con, params=params)
+
+    if cart.empty:
+        return pd.DataFrame()
+
+    cart["_nome_norm"] = cart["ativo"].map(_normalizar_nome_fundo)
+    # só interessam as posições cujo ativo investido emitiu recentemente
+    cart = cart[cart["_nome_norm"].isin(mapa_emissao.keys())]
+    if cart.empty:
+        return pd.DataFrame()
+
+    linhas = []
+    # para cada (fundo monitorado, ativo investido), compara mês atual vs anterior
+    for (fcnpj, cnpj_inv), grupo in cart.groupby(["fundo_cnpj", "cnpj_investido"]):
+        grupo = grupo.sort_values("competencia")
+        comps = grupo["competencia"].tolist()
+        atual = grupo.iloc[-1]
+        val_atual = atual["valor_financeiro"] or 0
+        val_ant = None
+        if len(comps) >= 2:
+            val_ant = grupo.iloc[-2]["valor_financeiro"] or 0
+
+        if val_ant is None or val_ant == 0:
+            tipo = "Nova posição"
+            variacao = None
+        else:
+            variacao = (val_atual - val_ant) / val_ant * 100
+            if variacao <= crescimento_min_pct:
+                continue  # crescimento dentro do que é rentabilidade — ignora
+            tipo = "Aumento"
+
+        chave = atual["_nome_norm"]
+        info_emis = mapa_emissao.get(chave, {})
+        linhas.append({
+            "gestora": atual["gestora"],
+            "fundo_monitorado": atual["fundo_monitorado"],
+            "fundo_cnpj": fcnpj,
+            "ativo": atual["ativo"],
+            "cnpj_investido": cnpj_inv,
+            "competencia": atual["competencia"],
+            "valor_anterior": val_ant,
+            "valor_atual": val_atual,
+            "variacao_pct": variacao,
+            "tipo": tipo,
+            "emissor_cvm": info_emis.get("emissor"),
+            "data_emissao": info_emis.get("data"),
+        })
+
+    if not linhas:
+        return pd.DataFrame()
+    out = pd.DataFrame(linhas)
+    # ordena: novas posições primeiro, depois maiores aumentos
+    out["_ordem"] = out["tipo"].map({"Nova posição": 0, "Aumento": 1})
+    out = out.sort_values(["_ordem", "variacao_pct"],
+                          ascending=[True, False]).drop(columns=["_ordem"])
+    return out.reset_index(drop=True)
