@@ -1,0 +1,38 @@
+2026-07-07 13:25:09 | INFO    | fidc_cda | Cadastro importado: {'inseridos': 3, 'atualizados': 0, 'ignorados': 0}
+2026-07-07 13:25:16 | INFO    | fidc_cda | Importação concluída: OK=1 PARCIAL=0 DUPLICADO=0 ERRO=0
+2026-07-07 13:41:03 | WARNING | fidc_cda | Linha ignorada (CNPJ do fundo ausente/invalido): {'gestora_nome': 'Solis Investimentos', 'gestora_cnpj': nan, 'fundo_nome': 'SOLIS CAPITAL CORE', 'fundo_cnpj': '1,30547E+13', 'administrador': nan, 'gestor': nan, 'classe': 'FIC FIDC', 'ativo': 'S', 'observacoes': nan}
+2026-07-07 13:41:03 | INFO    | fidc_cda | Cadastro importado: {'inseridos': 0, 'atualizados': 0, 'ignorados': 1}
+2026-07-07 13:41:08 | INFO    | fidc_cda | Importação concluída: OK=1 PARCIAL=0 DUPLICADO=0 ERRO=0
+2026-07-07 13:43:31 | INFO    | fidc_cda | Cadastro importado: {'inseridos': 1, 'atualizados': 0, 'ignorados': 0}
+2026-07-07 13:43:35 | INFO    | fidc_cda | Importação concluída: OK=0 PARCIAL=0 DUPLICADO=1 ERRO=0
+2026-07-07 13:50:40 | INFO    | fidc_cda | Cadastro importado: {'inseridos': 1, 'atualizados': 0, 'ignorados': 0}
+2026-07-07 13:50:46 | INFO    | fidc_cda | Importação concluída: OK=1 PARCIAL=0 DUPLICADO=0 ERRO=0
+2026-07-08 10:27:38 | INFO    | fidc_cda | Enriquecimento CVM: 137 atualizados (fundos=1, ativos=136). Bases: registro_fundo=80301, cad_fi=41106.
+2026-07-08 10:35:11 | INFO    | fidc_cda | Enriquecimento CVM: 1 atualizados (fundos=1, ativos=0). Bases: registro_fundo=80301, cad_fi=41106.
+2026-07-09 15:08:38 | WARNING | fidc_cda | Linha ignorada (CNPJ do fundo ausente/invalido): {'gestora_nome': '13054656000139', 'gestora_cnpj': nan, 'fundo_nome': nan, 'fundo_cnpj': 'FIC FIDC', 'administrador': 'S', 'gestor': 'M8 Capital', 'classe': nan, 'ativo': 'M8 CREDIT OPPORTUNITIES', 'observacoes': '26841302000186'}
+2026-07-09 15:08:38 | INFO    | fidc_cda | Cadastro importado: {'inseridos': 0, 'atualizados': 0, 'ignorados': 1}
+2026-07-09 15:09:06 | INFO    | fidc_cda | Importação concluída: OK=1 PARCIAL=0 DUPLICADO=1 ERRO=0
+2026-07-09 15:12:49 | INFO    | fidc_cda | Cadastro importado: {'inseridos': 1, 'atualizados': 1, 'ignorados': 0}
+2026-07-09 15:13:00 | INFO    | fidc_cda | Importação concluída: OK=0 PARCIAL=0 DUPLICADO=2 ERRO=0
+2026-07-09 15:15:49 | INFO    | fidc_cda | Enriquecimento CVM: 53 atualizados (fundos=2, ativos=51). Bases: registro_fundo=80324, cad_fi=41106.
+2026-07-09 17:25:30 | INFO    | fidc_cda | Enriquecimento CVM: 6 atualizados (fundos=2, ativos=4). Bases: registro_fundo=80324, cad_fi=41106.
+2026-07-09 17:35:04 | INFO    | fidc_cda | Enriquecimento CVM: 2 atualizados (fundos=2, ativos=0). Bases: registro_fundo=80324, cad_fi=41106.
+2026-07-10 16:36:42 | INFO    | fidc_cda | Cadastro importado: {'inseridos': 0, 'atualizados': 2, 'ignorados': 0}
+2026-07-10 16:40:10 | INFO    | fidc_cda | Enriquecimento CVM: 2 atualizados (fundos=2, ativos=0). Bases: registro_fundo=80337, cad_fi=41106.
+2026-07-10 17:26:57 | INFO    | fidc_cda | Enriquecimento CVM: 3 atualizados (fundos=3, ativos=0). Bases: registro_fundo=80337, cad_fi=41106.
+2026-07-10 17:38:16 | INFO    | fidc_cda | Enriquecimento CVM: 38 atualizados (fundos=4, ativos=34). Bases: registro_fundo=80337, cad_fi=41106.
+2026-07-10 18:07:34 | INFO    | fidc_cda | Enriquecimento CVM: 6 atualizados (fundos=4, ativos=2). Bases: registro_fundo=80337, cad_fi=41106.
+2026-07-13 11:55:30 | INFO    | fidc_cda | Enriquecimento CVM: 4 atualizados (fundos=3, ativos=1). Bases: registro_fundo=80374, cad_fi=41106.
+2026-07-13 14:06:09 | INFO    | fidc_cda | Enriquecimento CVM: 3 atualizados (fundos=3, ativos=0). Bases: registro_fundo=80374, cad_fi=41106.
+2026-07-13 14:07:21 | INFO    | fidc_cda | Enriquecimento CVM: 3 atualizados (fundos=3, ativos=0). Bases: registro_fundo=80374, cad_fi=41106.
+2026-07-13 15:24:36 | INFO    | fidc_cda | Enriquecimento CVM: 22 atualizados (fundos=4, ativos=18). Bases: registro_fundo=80374, cad_fi=41106.
+2026-07-13 15:37:50 | INFO    | fidc_cda | Enriquecimento CVM: 4 atualizados (fundos=4, ativos=0). Bases: registro_fundo=80374, cad_fi=41106.
+2026-07-13 16:11:04 | INFO    | fidc_cda | Enriquecimento CVM: 36 atualizados (fundos=5, ativos=31). Bases: registro_fundo=80374, cad_fi=41106.
+2026-07-13 16:19:33 | INFO    | fidc_cda | Enriquecimento CVM: 9 atualizados (fundos=6, ativos=3). Bases: registro_fundo=80374, cad_fi=41106.
+2026-07-13 16:20:41 | INFO    | fidc_cda | Enriquecimento CVM: 15 atualizados (fundos=6, ativos=9). Bases: registro_fundo=80374, cad_fi=41106.
+2026-07-13 16:24:24 | INFO    | fidc_cda | Enriquecimento CVM: 9 atualizados (fundos=6, ativos=3). Bases: registro_fundo=80374, cad_fi=41106.
+2026-07-13 19:36:35 | INFO    | fidc_cda | Enriquecimento CVM: 49 atualizados (fundos=7, ativos=42). Bases: registro_fundo=80374, cad_fi=41106.
+2026-07-13 19:36:35 | INFO    | fidc_cda | Enriquecimento CVM: 7 atualizados (fundos=7, ativos=0). Bases: registro_fundo=80374, cad_fi=41106.
+2026-07-13 19:36:36 | INFO    | fidc_cda | Enriquecimento CVM: 7 atualizados (fundos=7, ativos=0). Bases: registro_fundo=80374, cad_fi=41106.
+2026-07-13 19:36:36 | INFO    | fidc_cda | Enriquecimento CVM: 7 atualizados (fundos=7, ativos=0). Bases: registro_fundo=80374, cad_fi=41106.
+2026-07-13 19:37:06 | INFO    | fidc_cda | Enriquecimento CVM: 7 atualizados (fundos=7, ativos=0). Bases: registro_fundo=80374, cad_fi=41106.

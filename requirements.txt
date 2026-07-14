@@ -1,0 +1,15 @@
+# Núcleo
+pandas>=2.0
+openpyxl>=3.1          # leitura/escrita de XLSX
+streamlit>=1.30        # dashboard
+
+# Parsing de PDF (opcional, mas recomendado)
+pdfplumber>=0.10
+
+# Integração CVM (opcional — Fase 2)
+requests>=2.31
+
+# Observação:
+# - XML, CSV e TXT usam apenas a biblioteca padrão do Python.
+# - Para tabelas de PDF muito complexas, considere camelot-py[cv] ou tabula-py
+#   (exigem dependências extras: Ghostscript/Java). Não são necessárias no MVP.
