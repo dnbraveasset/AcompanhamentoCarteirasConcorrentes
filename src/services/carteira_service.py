@@ -347,11 +347,14 @@ def comparar_meses(fundo_cnpj: str, comp_atual: str, comp_anterior: str) -> dict
 # ---------------------------------------------------------------------------
 def exposicao_consolidada(gestora_nome: Optional[str] = None,
                           competencia: Optional[str] = None) -> pd.DataFrame:
-    """Consolida por CNPJ investido: em quantos fundos aparece e valor total."""
+    """Consolida por CNPJ investido: em quantos fundos e gestoras aparece,
+    e valor total."""
     sql = """
         SELECT c.cnpj_investido,
                COALESCE(a.nome, MAX(c.nome_ativo)) AS nome_ativo,
                COUNT(DISTINCT c.fundo_cnpj) AS qtd_fundos,
+               COUNT(DISTINCT g.nome) AS qtd_gestoras,
+               GROUP_CONCAT(DISTINCT g.nome) AS gestoras,
                GROUP_CONCAT(DISTINCT c.fundo_cnpj) AS fundos,
                SUM(c.valor_financeiro) AS valor_total
         FROM carteiras_cda c
@@ -367,7 +370,7 @@ def exposicao_consolidada(gestora_nome: Optional[str] = None,
     if competencia:
         sql += " AND c.competencia = ?"
         params.append(competencia)
-    sql += " GROUP BY c.cnpj_investido ORDER BY qtd_fundos DESC, valor_total DESC"
+    sql += " GROUP BY c.cnpj_investido ORDER BY qtd_gestoras DESC, qtd_fundos DESC, valor_total DESC"
     with conectar() as con:
         return pd.read_sql_query(sql, con, params=params)
 
