@@ -732,6 +732,63 @@ elif pagina.startswith("5"):
     gestora = st.selectbox("Gestora", opcoes_g)
     gestora_f = None if gestora == "(todas)" else gestora
 
+    # ---- Concorrente entrou em emissão recente (cruza Emissões × Carteira) -
+    st.subheader("🎯 Concorrente entrou em emissão recente")
+    st.caption("Cruza os FIDCs que emitiram no mercado (aba Emissões) com as "
+               "carteiras dos concorrentes. Mostra quando um concorrente "
+               "ABRIU posição nova ou AUMENTOU de forma relevante (acima de "
+               "rentabilidade) num fundo que foi ao mercado captar. "
+               "O casamento é por nome do fundo (a base de ofertas da CVM não "
+               "traz CNPJ), então pode haver pequenas imprecisões.")
+    cresc_min = st.slider(
+        "Considerar 'entrada' quando o valor cresceu mais de (%)", 1.0, 30.0, 5.0, 1.0,
+        help="Abaixo disso, o crescimento é tratado como rentabilidade da cota, "
+             "não como aporte novo. Posições totalmente novas entram sempre.")
+    try:
+        from dashboard.paginas.emissoes import _carregar_url
+        with st.spinner("Carregando emissões da CVM para cruzar…"):
+            df_emis = _carregar_url()
+        # filtra emissões dos últimos 30 dias
+        if "data_referencia" in df_emis.columns:
+            corte = pd.Timestamp.now().normalize() - pd.Timedelta(days=30)
+            df_emis = df_emis[df_emis["data_referencia"] >= corte]
+        cruz = svc.concorrentes_em_emissoes(df_emis, crescimento_min_pct=cresc_min,
+                                            gestora_nome=gestora_f)
+        if cruz.empty:
+            st.success("Nenhum concorrente entrou/aumentou posição em emissões "
+                       "recentes (com os critérios atuais).")
+        else:
+            st.warning(f"{len(cruz)} caso(s) encontrados:")
+            tab = cruz.copy()
+            tab["fundo_cnpj"] = tab["fundo_cnpj"].map(fmt_cnpj)
+            tab["cnpj_investido"] = tab["cnpj_investido"].map(fmt_cnpj)
+            tab["valor_anterior"] = tab["valor_anterior"].map(
+                lambda v: fmt_moeda(v) if pd.notna(v) else "—")
+            tab["valor_atual"] = tab["valor_atual"].map(fmt_moeda)
+            tab["variacao_pct"] = tab["variacao_pct"].map(
+                lambda v: f"+{v:.1f}%" if pd.notna(v) else "nova")
+            tab["data_emissao"] = tab["data_emissao"].map(
+                lambda d: d.strftime("%d/%m/%Y") if pd.notna(d) else "—")
+            tab = tab.rename(columns={
+                "gestora": "Gestora", "fundo_monitorado": "Fundo (concorrente)",
+                "ativo": "Fundo que emitiu", "tipo": "Sinal",
+                "valor_anterior": "Valor mês ant.", "valor_atual": "Valor atual",
+                "variacao_pct": "Variação", "competencia": "Competência",
+                "data_emissao": "Emissão em"})
+            cols_mostrar = ["Gestora", "Fundo (concorrente)", "Fundo que emitiu",
+                            "Sinal", "Valor mês ant.", "Valor atual", "Variação",
+                            "Competência", "Emissão em"]
+            st.dataframe(tab[[c for c in cols_mostrar if c in tab.columns]],
+                         use_container_width=True, hide_index=True)
+            st.download_button("Exportar CSV", svc.exportar_csv(cruz),
+                               file_name="concorrentes_em_emissoes.csv", mime="text/csv")
+    except Exception as e:  # noqa: BLE001
+        st.info("Não foi possível carregar as emissões da CVM agora para o "
+                f"cruzamento ({e}). Abra a aba Emissões uma vez e volte aqui, "
+                "ou tente novamente mais tarde.")
+
+    st.divider()
+
     al = svc.alertas(gestora_f, limite_concentracao=limite)
 
     st.subheader("Fundos cadastrados sem CDA importado")
