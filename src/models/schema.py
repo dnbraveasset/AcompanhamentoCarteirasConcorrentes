@@ -142,6 +142,26 @@ CREATE TABLE IF NOT EXISTS anotacoes_ativos (
     atualizado_em TEXT DEFAULT (datetime('now'))
 );
 
+-- ----------------------------------------------------------------- base_fundos
+-- Resumo de fundos vindo da base Excel (planilha COMPARACAO_FUNDOS + dados da
+-- base bruta). Guarda apenas o snapshot da data mais recente por CNPJ.
+CREATE TABLE IF NOT EXISTS base_fundos (
+    cnpj                TEXT PRIMARY KEY,
+    nome                TEXT,
+    data_base           TEXT,      -- competência do dado (AAAA-MM-DD)
+    pl                  REAL,
+    pct_caixa           REAL,      -- CAIXA / PL (da base bruta)
+    condominio          TEXT,      -- ABERTO / FECHADO (da base bruta)
+    administrador       TEXT,
+    subord_sen          REAL,
+    subord_mez          REAL,
+    rentsub_12          REAL,
+    pct_meses_negativos REAL,
+    cedentes_sub_json   TEXT,      -- lista JSON dos 10 maiores cedentes
+    rating_final        TEXT,
+    atualizado_em       TEXT DEFAULT (datetime('now'))
+);
+
 -- --------------------------------------------------------------------- índices
 CREATE INDEX IF NOT EXISTS idx_carteira_fundo   ON carteiras_cda (fundo_cnpj, competencia);
 CREATE INDEX IF NOT EXISTS idx_carteira_invest  ON carteiras_cda (cnpj_investido);
