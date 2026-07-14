@@ -269,6 +269,45 @@ def render_chips(itens, cor="neutro"):
     st.markdown(f'<div>{chips}</div>', unsafe_allow_html=True)
 
 
+def render_detalhes_base_fundo(cnpj, titulo="Detalhes do fundo (base)"):
+    """Renderiza um box com os detalhes de um fundo vindos da base Excel
+    (PL, % caixa, condomínio, subordinação, rentabilidade, cedentes...).
+    Reutilizado na Carteira por fundo, nas Emissões e no Resumo Fundos."""
+    from src.services import base_fundos_service as bfs
+    det = bfs.detalhe_fundo(cnpj)
+    if not det:
+        st.caption("Este fundo não está na base de dados (Excel) importada.")
+        return
+
+    def _pct(v):
+        return f"{v*100:.2f}%".replace(".", ",") if v is not None and pd.notna(v) else "—"
+
+    st.markdown(f"##### {titulo}")
+    st.caption(f"Competência da base: {det.get('data_base') or '—'}")
+    c = st.columns(4)
+    c[0].metric("PL", fmt_moeda(det.get("pl")))
+    c[1].metric("% Caixa", _pct(det.get("pct_caixa")))
+    c[2].metric("Condomínio", det.get("condominio") or "—")
+    c[3].metric("Rating final", det.get("rating_final") or "—")
+    c2 = st.columns(4)
+    c2[0].metric("Sub. Sênior", _pct(det.get("subord_sen")))
+    c2[1].metric("Sub. Mezanino", _pct(det.get("subord_mez")))
+    c2[2].metric("Rent. Sub 12m", _pct(det.get("rentsub_12")))
+    c2[3].metric("% Meses neg.", _pct(det.get("pct_meses_negativos")))
+    if det.get("administrador"):
+        st.caption(f"Administrador: {det['administrador']}")
+
+    cedentes = det.get("cedentes_sub") or []
+    if cedentes:
+        st.markdown("**10 maiores cedentes (Sub)**")
+        dfc = pd.DataFrame(cedentes)
+        if "participacao" in dfc.columns:
+            dfc["participacao"] = dfc["participacao"].map(
+                lambda v: f"{v:.2f}%".replace(".", ",") if pd.notna(v) else "—")
+        dfc = dfc.rename(columns={"cnpj": "CNPJ cedente", "participacao": "Participação"})
+        st.dataframe(dfc, use_container_width=True, hide_index=True)
+
+
 if not Path(settings.DB_PATH).exists():
     st.error("Banco não encontrado. Rode primeiro:  `python main.py init-db` e `python main.py import-cdas`.")
     st.stop()
@@ -276,6 +315,9 @@ if not Path(settings.DB_PATH).exists():
 # garante a tabela de anotações manuais mesmo em bancos antigos
 from src.database import garantir_tabela_anotacoes  # noqa: E402
 garantir_tabela_anotacoes()
+
+from src.services.base_fundos_service import garantir_tabela_base_fundos  # noqa: E402
+garantir_tabela_base_fundos()
 
 if LOGO_HORIZONTAL.exists():
     st.sidebar.image(str(LOGO_HORIZONTAL), use_container_width=True)
@@ -285,7 +327,8 @@ pagina = st.sidebar.radio(
     "Página",
     ["1 · Visão da gestora", "2 · Carteira por fundo",
      "3 · Comparação mês a mês", "4 · Exposição consolidada", "5 · Alertas",
-     "6 · Rankings", "7 · Enviar CDA", "8 · Emissões (CVM)"],
+     "6 · Rankings", "7 · Enviar Base de Dados", "8 · Emissões (CVM)",
+     "9 · Resumo Fundos"],
 )
 
 gestoras = svc.listar_gestoras()
@@ -622,6 +665,10 @@ elif pagina.startswith("2"):
                          file_name=f"carteira_{fundo_cnpj}_{comp}.xlsx",
                          mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
 
+    # detalhes do fundo vindos da base Excel (PL, % caixa, subordinação, cedentes)
+    st.divider()
+    render_detalhes_base_fundo(fundo_cnpj)
+
 
 # ===========================================================================
 # Página 3 — Comparação mês a mês
@@ -944,9 +991,38 @@ elif pagina.startswith("6"):
 # Página 7 — Enviar CDA (upload direto, sem terminal)
 # ===========================================================================
 elif pagina.startswith("7"):
-    st.header("Enviar CDA")
-    st.caption("Envie o arquivo do CDA aqui e o sistema importa direto — sem "
-               "precisar colocar na pasta nem rodar comando no terminal.")
+    st.header("Enviar Base de Dados")
+    st.caption("Envie aqui a base mensal de fundos (Excel) e os CDAs — sem "
+               "precisar colocar em pasta nem rodar comando no terminal.")
+
+    # ---- Upload da Base de Fundos (Excel mensal) --------------------------
+    from src.services import base_fundos_service as bfs
+    st.subheader("📊 Base mensal de fundos (Excel)")
+    _data_base = bfs.data_base_atual()
+    if _data_base:
+        st.caption(f"Base atual carregada: competência **{_data_base}**. "
+                   "Enviar um novo arquivo substitui pela foto mais recente.")
+    else:
+        st.caption("Nenhuma base de fundos importada ainda.")
+    xls_up = st.file_uploader(
+        "Arquivo Excel da base (abas COMPARACAO_FUNDOS e flokiCVM_tbCVM_FIDCS)",
+        type=["xlsx", "xlsm"], key="base_excel_upload")
+    if xls_up is not None and st.button("📥 Importar base de fundos", key="btn_base"):
+        with st.spinner("Lendo o Excel e cruzando as abas… (pode levar alguns segundos)"):
+            r = bfs.importar_base_excel(xls_up.getvalue())
+        try:
+            st.cache_data.clear()
+        except Exception:
+            pass
+        if r.get("status") == "ok":
+            st.success(f"Base importada: {r['fundos']} fundos, competência "
+                       f"{r['data_base']}. Veja em 'Resumo Fundos'.")
+        else:
+            st.error(f"Falha: {r.get('mensagem', 'erro desconhecido')}")
+
+    st.divider()
+    st.subheader("📄 Enviar CDA")
+    st.caption("Envie o arquivo do CDA aqui e o sistema importa direto.")
 
     # o file_uploader fica FORA do form para disparar a detecção assim que o
     # arquivo é selecionado (dentro de um st.form, os widgets só atualizam a
@@ -1202,4 +1278,61 @@ elif pagina.startswith("8"):
         "TEXTO": BRAVE_TEXTO,
         "TEXTO_FRACO": BRAVE_TEXTO_FRACO,
         "BORDA": BRAVE_BORDA,
+        "_render_detalhes_fundo": render_detalhes_base_fundo,
     })
+
+
+# ===========================================================================
+# Página 9 — Resumo Fundos (base Excel)
+# ===========================================================================
+elif pagina.startswith("9"):
+    from src.services import base_fundos_service as bfs
+    st.header("Resumo Fundos")
+    if not bfs.base_disponivel():
+        st.info("Nenhuma base de fundos importada ainda. Vá em "
+                "**Enviar Base de Dados** e envie o Excel mensal.")
+    else:
+        st.caption(f"Base de dados — competência {bfs.data_base_atual()}. "
+                   "Sempre mostra a foto mais recente enviada.")
+        df = bfs.listar_base_fundos()
+
+        busca = st.text_input("Buscar fundo por nome ou CNPJ", key="resumo_busca").strip()
+        dff = df.copy()
+        if busca:
+            mask = (dff["nome"].str.contains(busca, case=False, na=False) |
+                    dff["cnpj"].str.contains(busca.replace(".", "").replace("/", "").replace("-", ""),
+                                             na=False))
+            dff = dff[mask]
+
+        st.caption(f"{len(dff)} fundos")
+
+        def _pct_col(s):
+            return s.map(lambda v: f"{v*100:.2f}%".replace(".", ",")
+                         if pd.notna(v) else "—")
+
+        tab = pd.DataFrame({
+            "Fundo": dff["nome"],
+            "CNPJ": dff["cnpj"].map(fmt_cnpj),
+            "PL": dff["pl"].map(fmt_moeda),
+            "% Caixa": _pct_col(dff["pct_caixa"]),
+            "Condomínio": dff["condominio"].fillna("—"),
+            "Sub SN": _pct_col(dff["subord_sen"]),
+            "Sub Mz": _pct_col(dff["subord_mez"]),
+            "Rent Sub 12m": _pct_col(dff["rentsub_12"]),
+            "% Meses neg.": _pct_col(dff["pct_meses_negativos"]),
+            "Rating": dff["rating_final"].fillna("—"),
+        })
+        st.dataframe(tab, use_container_width=True, hide_index=True)
+        st.download_button("Exportar CSV", tab.to_csv(index=False).encode("utf-8-sig"),
+                           file_name="resumo_fundos.csv", mime="text/csv")
+
+        st.divider()
+        # detalhe de um fundo (inclui os 10 cedentes)
+        rotulos = {f"{r['nome']} — {fmt_cnpj(r['cnpj'])}": r["cnpj"]
+                   for _, r in dff.iterrows()}
+        if rotulos:
+            escolha = st.selectbox("Ver detalhes de um fundo (com cedentes)",
+                                   ["—"] + list(rotulos.keys()))
+            if escolha != "—":
+                render_detalhes_base_fundo(rotulos[escolha],
+                                           titulo="Detalhes completos")
