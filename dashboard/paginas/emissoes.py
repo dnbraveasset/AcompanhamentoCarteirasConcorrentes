@@ -258,11 +258,36 @@ def _abas(df, base, campos, c_emissor, tem_valor, dias, data_recente, cores):
 
         if idx_detalhe is not None:
             nome_sel = df.iloc[idx_detalhe][c_emissor] if c_emissor else f"Oferta {idx_detalhe}"
-            st.markdown(f"#### Detalhes — {nome_sel}")
             linha = df.iloc[idx_detalhe].drop(labels=[c for c in ["_valor_num"] if c in df.columns])
-            det = linha.dropna().astype(str)
-            det = det[det.str.strip() != ""]
-            st.table(det.rename("valor").to_frame())
+
+            box_of, box_fundo = st.columns(2, gap="large")
+            with box_of:
+                st.markdown(f"#### Detalhes da oferta")
+                st.caption(nome_sel)
+                det = linha.dropna().astype(str)
+                det = det[det.str.strip() != ""]
+                st.table(det.rename("valor").to_frame())
+
+            with box_fundo:
+                # tenta achar o CNPJ do emissor na linha para cruzar com a base
+                render_fundo = cores.get("_render_detalhes_fundo")
+                cnpj_emissor = None
+                for col in linha.index:
+                    if "cnpj" in str(col).lower() and "emissor" in str(col).lower():
+                        cnpj_emissor = linha[col]
+                        break
+                if cnpj_emissor is None:  # fallback: qualquer coluna CNPJ
+                    for col in linha.index:
+                        if str(col).lower() == "cnpj" or str(col).lower().startswith("cnpj"):
+                            cnpj_emissor = linha[col]
+                            break
+                if render_fundo and cnpj_emissor:
+                    render_fundo(str(cnpj_emissor),
+                                 titulo="Detalhes do fundo (base)")
+                elif not cnpj_emissor:
+                    st.markdown("#### Detalhes do fundo (base)")
+                    st.caption("A oferta não traz CNPJ do emissor para cruzar "
+                               "com a base de fundos.")
 
         exp = df.drop(columns=[c for c in ["_valor_num"] if c in df.columns])
         cols_baixar = st.columns(2)
